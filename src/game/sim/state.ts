@@ -14,6 +14,7 @@ export function createInitialState(): GameState {
     features: 0,
     totalWon: 0,
     devs,
+    upgrades: [],
     lastSave: 0,
   };
 }
@@ -27,4 +28,5 @@ export function resetForPrestige(s: GameState): void {
   s.features = 0;
   s.totalWon = 0;
   for (const d of DEVS) s.devs[d.id] = 0;
+  s.upgrades = [];
 }

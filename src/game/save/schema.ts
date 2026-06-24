@@ -2,9 +2,9 @@
 
 export const SAVE_KEY = "dev_tycoon:save";
 export const SAVE_BAK_KEY = "dev_tycoon:save.bak";
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
-/** v1 — first persisted format (mirrors GameState, all numbers native). */
+/** v1 — first persisted format (no upgrades). */
 export interface SaveV1 {
   version: 1;
   lastSave: number;
@@ -18,7 +18,13 @@ export interface SaveV1 {
   devs: Record<string, number>;
 }
 
+/** v2 — adds the upgrade tree (Phase 2). */
+export interface SaveV2 extends Omit<SaveV1, "version"> {
+  version: 2;
+  upgrades: string[];
+}
+
 /** Union of all known save versions (for migration input typing). */
-export type AnySave = SaveV1;
+export type AnySave = SaveV1 | SaveV2;
 /** The current/latest save shape. */
-export type LatestSave = SaveV1;
+export type LatestSave = SaveV2;

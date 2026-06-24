@@ -16,6 +16,7 @@ import { DEVS } from "../game/content/devs";
 import { createInitialState } from "../game/sim/state";
 import { createBugClock, tick, type SimEvent } from "../game/sim/tick";
 import * as A from "../game/sim/actions";
+import { UPGRADES, getUpgrade, type UpgradeFamily, type Currency } from "../game/content/upgrades";
 import {
   clearSave,
   exportSave,
@@ -63,6 +64,17 @@ export interface DevRow {
   debt: number;
 }
 
+export interface UpgradeRow {
+  id: string;
+  family: UpgradeFamily;
+  name: string;
+  desc: string;
+  cost: number;
+  currency: Currency;
+  owned: boolean;
+  canAfford: boolean;
+}
+
 /** Throttled display snapshot for the non-counter UI. */
 export interface Snapshot {
   prodMult: number;
@@ -79,6 +91,7 @@ export interface Snapshot {
   careerGain: number;
   canPrestige: boolean;
   devs: DevRow[];
+  upgrades: UpgradeRow[];
 }
 
 function computeSnapshot(s: GameState): Snapshot {
@@ -113,6 +126,20 @@ function computeSnapshot(s: GameState): Snapshot {
         debt: d.debt,
       };
     }),
+    upgrades: UPGRADES.map((u) => {
+      const owned = s.upgrades.includes(u.id);
+      const funds = u.currency === "won" ? s.won : s.loc;
+      return {
+        id: u.id,
+        family: u.family,
+        name: u.name,
+        desc: u.desc,
+        cost: u.cost,
+        currency: u.currency,
+        owned,
+        canAfford: !owned && funds >= u.cost,
+      };
+    }),
   };
 }
 
@@ -130,6 +157,7 @@ interface Store {
   ship: () => void;
   refactorNow: () => void;
   hire: (id: string) => void;
+  buyUpgrade: (id: string) => void;
   prestigeNow: () => boolean;
   /** persist now (autosave timer + lifecycle handlers) */
   saveNow: () => void;
@@ -193,6 +221,15 @@ export const useGame = create<Store>((set, get) => ({
     if (!d) return;
     const count = A.hireDev(sim, d);
     if (count !== null) logLine(get, set, { html: `+ ${d.nm} 채용 (${count}명)`, cls: "y" });
+    get().refresh();
+  },
+
+  buyUpgrade: (id) => {
+    const u = getUpgrade(id);
+    if (!u) return;
+    if (A.buyUpgrade(sim, u)) {
+      logLine(get, set, { html: `🔧 업그레이드 · ${u.name}`, cls: "y" });
+    }
     get().refresh();
   },
 

@@ -6,6 +6,28 @@
 import type { DevDef, GameState } from "../types";
 import { BALANCE as B } from "../config/balanceConfig";
 import { DEVS } from "../content/devs";
+import { getUpgrade } from "../content/upgrades";
+
+export interface UpgradeMods {
+  click: number;
+  prod: number;
+  debt: number;
+  offlineAdd: number;
+}
+
+/** 보유 업그레이드 효과 합산 (곱/합연산). */
+export const upgradeMods = (s: GameState): UpgradeMods => {
+  const m: UpgradeMods = { click: 1, prod: 1, debt: 1, offlineAdd: 0 };
+  for (const id of s.upgrades) {
+    const u = getUpgrade(id);
+    if (!u) continue;
+    if (u.clickMult) m.click *= u.clickMult;
+    if (u.prodMult) m.prod *= u.prodMult;
+    if (u.debtMult) m.debt *= u.debtMult;
+    if (u.offlineAdd) m.offlineAdd += u.offlineAdd;
+  }
+  return m;
+};
 
 /** 경력 전역 배율: 1 + 0.02 * career */
 export const careerMult = (s: GameState): number => 1 + B.CAREER_BONUS * s.career;
@@ -17,19 +39,25 @@ export const prodMult = (s: GameState): number => 1 / (1 + s.debt / B.DEBT_SOFTC
 export const rawLoc = (s: GameState): number =>
   DEVS.reduce((sum, d) => sum + s.devs[d.id] * d.loc, 0);
 
-/** 실제 LoC/초 (부채·경력 반영) */
-export const locPerSec = (s: GameState): number => rawLoc(s) * prodMult(s) * careerMult(s);
+/** 실제 LoC/초 (부채·경력·업그레이드 반영) */
+export const locPerSec = (s: GameState): number =>
+  rawLoc(s) * prodMult(s) * careerMult(s) * upgradeMods(s).prod;
 
-/** 부채/초 (개발자 합산) */
+/** 부채/초 (개발자 합산, 업그레이드 감소 반영) */
 export const debtPerSec = (s: GameState): number =>
-  DEVS.reduce((sum, d) => sum + s.devs[d.id] * d.debt, 0);
+  DEVS.reduce((sum, d) => sum + s.devs[d.id] * d.debt, 0) * upgradeMods(s).debt;
 
-/** ₩/초 (유저 × 단가, 부채·경력 반영) */
+/** ₩/초 (유저 × 단가, 부채·경력·업그레이드 반영) */
 export const wonPerSec = (s: GameState): number =>
-  s.users * B.REV_PER_USER * prodMult(s) * careerMult(s);
+  s.users * B.REV_PER_USER * prodMult(s) * careerMult(s) * upgradeMods(s).prod;
 
-/** 코드 짜기 클릭 1회 LoC 획득량 */
-export const clickPow = (s: GameState): number => (1 + s.career) * careerMult(s);
+/** 코드 짜기 클릭 1회 LoC 획득량 (업그레이드 반영) */
+export const clickPow = (s: GameState): number =>
+  (1 + s.career) * careerMult(s) * upgradeMods(s).click;
+
+/** 오프라인 효율 (기본 + 업그레이드, 0.95 상한) */
+export const offlineEfficiency = (s: GameState): number =>
+  Math.min(0.95, B.OFFLINE_EFFICIENCY + upgradeMods(s).offlineAdd);
 
 /** 다음 기능 출시 LoC 비용 */
 export const featureCost = (s: GameState): number =>

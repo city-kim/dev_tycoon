@@ -443,6 +443,71 @@ header {
   line-height: 1.6;
 }
 
+/* ── 업그레이드 ── */
+.upg-fams {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.upg-fam-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+}
+.upg-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.upg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: 0.12s;
+}
+.upg:hover:not(:disabled) {
+  background: var(--panel-3);
+  border-color: rgba(129, 140, 248, 0.4);
+}
+.upg:disabled {
+  cursor: not-allowed;
+}
+.upg:disabled:not(.owned) {
+  opacity: 0.45;
+}
+.upg.owned {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(74, 222, 128, 0.07);
+}
+.upg-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.upg-desc {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.upg-cost {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--gold);
+  margin-top: 2px;
+}
+.upg.owned .upg-cost {
+  color: var(--green);
+}
+
 /* ── 개발실 (파티클 캔버스) ── */
 .devroom-stage {
   position: relative;

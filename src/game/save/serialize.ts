@@ -18,6 +18,7 @@ export function serialize(s: GameState): LatestSave {
     features: s.features,
     totalWon: s.totalWon,
     devs,
+    upgrades: [...s.upgrades],
   };
 }
 
@@ -42,6 +43,7 @@ export function deserialize(data: LatestSave): GameState {
     features: num(data.features),
     totalWon: num(data.totalWon),
     devs,
+    upgrades: Array.isArray(data.upgrades) ? data.upgrades.filter((id) => typeof id === "string") : [],
     lastSave: num(data.lastSave, base.lastSave),
   };
 }

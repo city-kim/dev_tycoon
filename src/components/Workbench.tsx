@@ -1,5 +1,6 @@
 import type { MouseEvent } from "react";
 import { useGame } from "../store/gameStore";
+import { emitCodeBurst } from "../store/fx";
 import { fmt } from "../format/number";
 
 /** 작업대: 코드 짜기 + 기능 출시. 떠오르는 +텍스트 연출 포함. */
@@ -18,6 +19,7 @@ export function Workbench() {
   const onCode = (e: MouseEvent) => {
     const gain = code();
     floatText(e.clientX, e.clientY, "+" + fmt(gain));
+    emitCodeBurst(); // 개발실 파티클 튀기기
   };
 
   return (

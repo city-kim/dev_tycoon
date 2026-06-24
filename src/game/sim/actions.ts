@@ -4,6 +4,7 @@
  * can log without re-deriving anything.
  */
 import type { DevDef, GameState } from "../types";
+import type { UpgradeDef } from "../content/upgrades";
 import { BALANCE as B } from "../config/balanceConfig";
 import {
   careerGain,
@@ -51,6 +52,20 @@ export function hireDev(s: GameState, d: DevDef): number | null {
   s.won -= cost;
   s.devs[d.id] += 1;
   return s.devs[d.id];
+}
+
+/** 업그레이드 구매: 이미 보유했거나 비용 부족이면 false. 성공 시 true. */
+export function buyUpgrade(s: GameState, u: UpgradeDef): boolean {
+  if (s.upgrades.includes(u.id)) return false;
+  if (u.currency === "won") {
+    if (s.won < u.cost) return false;
+    s.won -= u.cost;
+  } else {
+    if (s.loc < u.cost) return false;
+    s.loc -= u.cost;
+  }
+  s.upgrades.push(u.id);
+  return true;
 }
 
 /** 환생(퇴사 후 창업): 경력 획득 + 전체 초기화. 성공 시 획득 경력, 실패 시 null. */

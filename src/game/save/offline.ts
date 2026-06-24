@@ -1,6 +1,6 @@
 import type { GameState } from "../types";
 import { BALANCE as B } from "../config/balanceConfig";
-import { locPerSec, wonPerSec, debtPerSec } from "../sim/economy";
+import { locPerSec, wonPerSec, debtPerSec, offlineEfficiency } from "../sim/economy";
 
 export interface OfflineSummary {
   /** capped seconds away */
@@ -20,7 +20,7 @@ export function applyOfflineProgress(s: GameState, elapsedSec: number): OfflineS
   if (!Number.isFinite(elapsedSec) || elapsedSec < B.OFFLINE_MIN_SEC) return null;
 
   const capped = Math.min(elapsedSec, B.OFFLINE_CAP_SEC);
-  const eff = B.OFFLINE_EFFICIENCY;
+  const eff = offlineEfficiency(s);
 
   const loc = locPerSec(s) * capped * eff;
   const won = wonPerSec(s) * capped * eff;

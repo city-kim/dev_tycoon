@@ -24,6 +24,8 @@ export interface GameState {
   totalWon: number;
   /** id -> owned count */
   devs: Record<string, number>;
+  /** owned upgrade ids (one-time purchases; reset on prestige) */
+  upgrades: string[];
   /** epoch ms of last save (used by Phase 1 persistence) */
   lastSave: number;
 }

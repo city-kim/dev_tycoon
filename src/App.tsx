@@ -5,6 +5,7 @@ import { BALANCE as B } from "./game/config/balanceConfig";
 import { ResourceBar } from "./components/ResourceBar";
 import { Workbench } from "./components/Workbench";
 import { DebtCard } from "./components/DebtCard";
+import { UpgradeShop } from "./components/UpgradeShop";
 import { CommitLog } from "./components/CommitLog";
 import { HireList } from "./components/HireList";
 import { DevRoomCanvas } from "./components/DevRoomCanvas";
@@ -88,6 +89,7 @@ export default function App() {
         <div>
           <Workbench />
           <DebtCard />
+          <UpgradeShop />
           <CommitLog />
         </div>
         <div>
