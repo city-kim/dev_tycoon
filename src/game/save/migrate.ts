@@ -16,6 +16,10 @@ export function migrate(raw: unknown): LatestSave {
         // v1 → v2: introduce the upgrade tree (none owned on old saves).
         data = { ...data, version: 2, upgrades: [] };
         break;
+      case 2:
+        // v2 → v3: introduce research + achievements.
+        data = { ...data, version: 3, research: [], achievements: [] };
+        break;
       default:
         throw new Error(`save: no migration from v${data.version}`);
     }

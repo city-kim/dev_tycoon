@@ -6,15 +6,20 @@ import { ResourceBar } from "./components/ResourceBar";
 import { Workbench } from "./components/Workbench";
 import { DebtCard } from "./components/DebtCard";
 import { UpgradeShop } from "./components/UpgradeShop";
+import { ResearchTree } from "./components/ResearchTree";
 import { CommitLog } from "./components/CommitLog";
 import { HireList } from "./components/HireList";
 import { DevRoomCanvas } from "./components/DevRoomCanvas";
 import { PrestigeCard } from "./components/PrestigeCard";
+import { AchievementsCard } from "./components/AchievementsCard";
 import { SaveCard } from "./components/SaveCard";
 import { OfflineModal } from "./components/OfflineModal";
+import { EventModal } from "./components/EventModal";
 
 const DISPLAY_INTERVAL = 0.1; // seconds — throttled UI refresh (~10fps)
 const AUTOSAVE_MS = 15000; // debounced autosave cadence
+const EVENT_MIN = 100; // seconds — earliest next random event
+const EVENT_VAR = 120; // + up to this much (randomized)
 
 /**
  * The single game loop. Advances the sim every frame (delta-timed, clamped),
@@ -27,13 +32,22 @@ function useGameLoop() {
     let raf = 0;
     let last = performance.now();
     let acc = 0;
-    const { advance, refresh } = useGame.getState();
+    let eventAcc = 0;
+    let nextEventAt = EVENT_MIN + Math.random() * EVENT_VAR;
+    const { advance, refresh, maybeTriggerEvent } = useGame.getState();
 
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.5);
       last = now;
       advance(dt);
       updateLiveDisplay(); // live counter, every frame (DOM-direct, no re-render)
+
+      eventAcc += dt;
+      if (eventAcc >= nextEventAt) {
+        eventAcc = 0;
+        nextEventAt = EVENT_MIN + Math.random() * EVENT_VAR;
+        maybeTriggerEvent();
+      }
 
       acc += dt;
       if (acc >= DISPLAY_INTERVAL) {
@@ -90,17 +104,20 @@ export default function App() {
           <Workbench />
           <DebtCard />
           <UpgradeShop />
+          <ResearchTree />
           <CommitLog />
         </div>
         <div>
           <DevRoomCanvas />
           <HireList />
+          <AchievementsCard />
           <PrestigeCard />
           <SaveCard />
         </div>
       </div>
 
       <OfflineModal />
+      <EventModal />
 
       <div className="hint">
         requestAnimationFrame 게임 루프 · 모든 수치는 src/game/config·content 에서 조절

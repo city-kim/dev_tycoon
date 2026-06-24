@@ -17,6 +17,9 @@ import { createInitialState } from "../game/sim/state";
 import { createBugClock, tick, type SimEvent } from "../game/sim/tick";
 import * as A from "../game/sim/actions";
 import { UPGRADES, getUpgrade, type UpgradeFamily, type Currency } from "../game/content/upgrades";
+import { RESEARCH, getResearch } from "../game/content/research";
+import { ACHIEVEMENTS, getAchievement, newlyUnlocked } from "../game/content/achievements";
+import { EVENTS, type EventDef } from "../game/content/events";
 import {
   clearSave,
   exportSave,
@@ -75,6 +78,23 @@ export interface UpgradeRow {
   canAfford: boolean;
 }
 
+export interface ResearchRow {
+  id: string;
+  name: string;
+  desc: string;
+  cost: number;
+  owned: boolean;
+  locked: boolean; // 선행 연구 미충족
+  canAfford: boolean;
+}
+
+export interface AchievementRow {
+  id: string;
+  name: string;
+  desc: string;
+  unlocked: boolean;
+}
+
 /** Throttled display snapshot for the non-counter UI. */
 export interface Snapshot {
   prodMult: number;
@@ -87,11 +107,17 @@ export interface Snapshot {
   debt: number;
   debtRatio: number;
   penaltyPct: number;
+  debtDanger: boolean;
   careerBonusPct: number;
   careerGain: number;
   canPrestige: boolean;
   devs: DevRow[];
   upgrades: UpgradeRow[];
+  research: ResearchRow[];
+  achievements: AchievementRow[];
+  achUnlocked: number;
+  achTotal: number;
+  achBonusPct: number;
 }
 
 function computeSnapshot(s: GameState): Snapshot {
@@ -110,6 +136,7 @@ function computeSnapshot(s: GameState): Snapshot {
     debt: s.debt,
     debtRatio: Math.min(s.debt / (B.DEBT_SOFTCAP * 2), 1),
     penaltyPct: Math.round((1 - pm) * 100),
+    debtDanger: pm <= B.PROD_FLOOR * 1.6,
     careerBonusPct: Math.round(B.CAREER_BONUS * s.career * 100),
     careerGain: cg,
     canPrestige: cg >= 1,
@@ -140,6 +167,28 @@ function computeSnapshot(s: GameState): Snapshot {
         canAfford: !owned && funds >= u.cost,
       };
     }),
+    research: RESEARCH.map((r) => {
+      const owned = s.research.includes(r.id);
+      const locked = !!r.requires && !s.research.includes(r.requires);
+      return {
+        id: r.id,
+        name: r.name,
+        desc: r.desc,
+        cost: r.cost,
+        owned,
+        locked,
+        canAfford: !owned && !locked && s.won >= r.cost,
+      };
+    }),
+    achievements: ACHIEVEMENTS.map((a) => ({
+      id: a.id,
+      name: a.name,
+      desc: a.desc,
+      unlocked: s.achievements.includes(a.id),
+    })),
+    achUnlocked: s.achievements.length,
+    achTotal: ACHIEVEMENTS.length,
+    achBonusPct: s.achievements.length, // 각 1%
   };
 }
 
@@ -148,6 +197,8 @@ interface Store {
   snap: Snapshot;
   /** offline-progress summary from this session's load (null if none) */
   offline: OfflineSummary | null;
+  /** currently presented random event awaiting a choice (null if none) */
+  event: EventDef | null;
   /** advance the sim by dt seconds (called every frame) */
   advance: (dt: number) => void;
   /** recompute the display snapshot (called ~10fps and after each action) */
@@ -158,7 +209,12 @@ interface Store {
   refactorNow: () => void;
   hire: (id: string) => void;
   buyUpgrade: (id: string) => void;
+  buyResearch: (id: string) => void;
   prestigeNow: () => boolean;
+  /** present a random event if none is active (called by the loop on a timer) */
+  maybeTriggerEvent: () => void;
+  /** resolve the active event by choosing option index */
+  resolveEvent: (optionIndex: number) => void;
   /** persist now (autosave timer + lifecycle handlers) */
   saveNow: () => void;
   /** dismiss the "while you were away" summary */
@@ -189,13 +245,25 @@ export const useGame = create<Store>((set, get) => ({
   ],
   snap: computeSnapshot(sim),
   offline: initialOffline,
+  event: null,
 
   advance: (dt) => {
     const events = tick(sim, dt, bug);
     pushEvents(get, set, events);
   },
 
-  refresh: () => set({ snap: computeSnapshot(sim) }),
+  refresh: () => {
+    const unlocked = newlyUnlocked(sim);
+    if (unlocked.length) {
+      sim.achievements.push(...unlocked);
+      const lines = unlocked.map((id) =>
+        entry({ html: `🏆 도전과제 · ${getAchievement(id)!.name}`, cls: "y" }),
+      );
+      set({ log: [...lines.reverse(), ...get().log].slice(0, 9), snap: computeSnapshot(sim) });
+    } else {
+      set({ snap: computeSnapshot(sim) });
+    }
+  },
 
   code: () => {
     const gain = A.clickCode(sim);
@@ -233,6 +301,30 @@ export const useGame = create<Store>((set, get) => ({
     get().refresh();
   },
 
+  buyResearch: (id) => {
+    const r = getResearch(id);
+    if (!r) return;
+    if (A.buyResearch(sim, r)) {
+      logLine(get, set, { html: `🔬 연구 완료 · ${r.name}`, cls: "g" });
+    }
+    get().refresh();
+  },
+
+  maybeTriggerEvent: () => {
+    if (get().event || sim.features < 1) return;
+    const def = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+    set({ event: def });
+  },
+
+  resolveEvent: (optionIndex) => {
+    const ev = get().event;
+    if (!ev) return;
+    const opt = ev.options[optionIndex];
+    if (opt) logLine(get, set, { html: opt.apply(sim) });
+    set({ event: null });
+    get().refresh();
+  },
+
   prestigeNow: () => {
     const gain = A.prestige(sim);
     if (gain === null) return false;
@@ -266,7 +358,13 @@ export const useGame = create<Store>((set, get) => ({
     bug.timer = 0;
     bug.nextAt = 0;
     clearSave();
-    set({ offline: null, log: [entry({ html: "$ rm -rf · 새 출발", cls: "g" })] });
+    set({ offline: null, event: null, log: [entry({ html: "$ rm -rf · 새 출발", cls: "g" })] });
     get().refresh();
   },
 }));
+
+// Dev-only debug handle (console: `game.getState()`, `gameSim`). Stripped from prod.
+if (import.meta.env.DEV) {
+  (window as unknown as { game?: typeof useGame; gameSim?: GameState }).game = useGame;
+  (window as unknown as { gameSim?: GameState }).gameSim = sim;
+}

@@ -9,10 +9,14 @@ export function DebtCard() {
   const penaltyPct = useGame((s) => s.snap.penaltyPct);
   const refundCost = useGame((s) => s.snap.refundCost);
   const canRefactor = useGame((s) => s.snap.canRefactor);
+  const danger = useGame((s) => s.snap.debtDanger);
 
   return (
-    <div className="card glitchable">
-      <h2>기술 부채</h2>
+    <div className={"card glitchable" + (danger ? " debt-danger" : "")}>
+      <h2>
+        기술 부채
+        {danger && <span className="debt-warn">⚠ 생산성 위험 — 리팩토링 필요</span>}
+      </h2>
       <div className="debtwrap">
         <div className="meter">
           <div className="fill" style={{ width: debtRatio * 100 + "%" }} />

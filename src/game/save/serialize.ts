@@ -19,6 +19,8 @@ export function serialize(s: GameState): LatestSave {
     totalWon: s.totalWon,
     devs,
     upgrades: [...s.upgrades],
+    research: [...s.research],
+    achievements: [...s.achievements],
   };
 }
 
@@ -43,7 +45,12 @@ export function deserialize(data: LatestSave): GameState {
     features: num(data.features),
     totalWon: num(data.totalWon),
     devs,
-    upgrades: Array.isArray(data.upgrades) ? data.upgrades.filter((id) => typeof id === "string") : [],
+    upgrades: strArray(data.upgrades),
+    research: strArray(data.research),
+    achievements: strArray(data.achievements),
     lastSave: num(data.lastSave, base.lastSave),
   };
 }
+
+const strArray = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];

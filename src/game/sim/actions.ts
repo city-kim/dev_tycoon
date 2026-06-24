@@ -5,6 +5,7 @@
  */
 import type { DevDef, GameState } from "../types";
 import type { UpgradeDef } from "../content/upgrades";
+import type { ResearchDef } from "../content/research";
 import { BALANCE as B } from "../config/balanceConfig";
 import {
   careerGain,
@@ -65,6 +66,16 @@ export function buyUpgrade(s: GameState, u: UpgradeDef): boolean {
     s.loc -= u.cost;
   }
   s.upgrades.push(u.id);
+  return true;
+}
+
+/** 연구 해금: 선행 미충족·중복·₩ 부족이면 false. 성공 시 true. */
+export function buyResearch(s: GameState, r: ResearchDef): boolean {
+  if (s.research.includes(r.id)) return false;
+  if (r.requires && !s.research.includes(r.requires)) return false;
+  if (s.won < r.cost) return false;
+  s.won -= r.cost;
+  s.research.push(r.id);
   return true;
 }
 

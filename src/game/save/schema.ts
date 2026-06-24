@@ -2,7 +2,7 @@
 
 export const SAVE_KEY = "dev_tycoon:save";
 export const SAVE_BAK_KEY = "dev_tycoon:save.bak";
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** v1 — first persisted format (no upgrades). */
 export interface SaveV1 {
@@ -24,7 +24,14 @@ export interface SaveV2 extends Omit<SaveV1, "version"> {
   upgrades: string[];
 }
 
+/** v3 — adds research tree + achievements (Phase 3). */
+export interface SaveV3 extends Omit<SaveV2, "version"> {
+  version: 3;
+  research: string[];
+  achievements: string[];
+}
+
 /** Union of all known save versions (for migration input typing). */
-export type AnySave = SaveV1 | SaveV2;
+export type AnySave = SaveV1 | SaveV2 | SaveV3;
 /** The current/latest save shape. */
-export type LatestSave = SaveV2;
+export type LatestSave = SaveV3;

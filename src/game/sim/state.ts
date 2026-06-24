@@ -15,6 +15,8 @@ export function createInitialState(): GameState {
     totalWon: 0,
     devs,
     upgrades: [],
+    research: [],
+    achievements: [],
     lastSave: 0,
   };
 }
@@ -29,4 +31,5 @@ export function resetForPrestige(s: GameState): void {
   s.totalWon = 0;
   for (const d of DEVS) s.devs[d.id] = 0;
   s.upgrades = [];
+  s.research = []; // research resets with the run; achievements persist
 }

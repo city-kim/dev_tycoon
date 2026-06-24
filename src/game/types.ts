@@ -26,6 +26,10 @@ export interface GameState {
   devs: Record<string, number>;
   /** owned upgrade ids (one-time purchases; reset on prestige) */
   upgrades: string[];
+  /** unlocked research node ids (tree; reset on prestige) */
+  research: string[];
+  /** unlocked achievement ids (permanent — survive prestige) */
+  achievements: string[];
   /** epoch ms of last save (used by Phase 1 persistence) */
   lastSave: number;
 }

@@ -1,17 +1,24 @@
 import { describe, it, expect } from "vitest";
 import { createInitialState } from "./state";
 import { createBugClock, tick } from "./tick";
-import { clickCode, hireDev, shipFeature, refactor, prestige } from "./actions";
+import { buyResearch, buyUpgrade, clickCode, hireDev, shipFeature, refactor, prestige } from "./actions";
 import {
+  achievementMult,
   careerGain,
   clickPow,
   devCost,
   featureCost,
   locPerSec,
   prodMult,
+  researchMods,
+  usersGain,
   wonPerSec,
 } from "./economy";
 import { DEVS } from "../content/devs";
+import { getResearch } from "../content/research";
+import { getUpgrade } from "../content/upgrades";
+import { newlyUnlocked } from "../content/achievements";
+import { BALANCE as B } from "../config/balanceConfig";
 import { fmt } from "../../format/number";
 
 describe("economy", () => {
@@ -121,6 +128,85 @@ describe("tick", () => {
     expect(events.length).toBe(1);
     expect(events[0].cls).toBe("r");
     expect(s.debt).toBeGreaterThan(200);
+  });
+});
+
+describe("debt floor (death-spiral fix)", () => {
+  it("prodMult never drops below PROD_FLOOR", () => {
+    const s = createInitialState();
+    s.debt = 1e9;
+    expect(prodMult(s)).toBe(B.PROD_FLOOR);
+    s.debt = 0;
+    expect(prodMult(s)).toBe(1);
+  });
+});
+
+describe("upgrades (Phase 2)", () => {
+  it("buyUpgrade gates on funds and applies click multiplier", () => {
+    const s = createInitialState();
+    const clk1 = getUpgrade("clk1")!; // 50 LoC, click ×2
+    expect(buyUpgrade(s, clk1)).toBe(false);
+    s.loc = 50;
+    expect(buyUpgrade(s, clk1)).toBe(true);
+    expect(s.loc).toBe(0);
+    expect(clickPow(s)).toBe(2); // base 1 × 2
+    expect(buyUpgrade(s, clk1)).toBe(false); // no double-buy
+  });
+});
+
+describe("research (Phase 3)", () => {
+  it("requires prerequisites and ₩", () => {
+    const s = createInitialState();
+    const growth = getResearch("r_growth")!; // requires r_lean
+    s.won = 1e9;
+    expect(buyResearch(s, growth)).toBe(false); // prereq missing
+    expect(buyResearch(s, getResearch("r_lean")!)).toBe(true);
+    expect(buyResearch(s, growth)).toBe(true);
+  });
+
+  it("applies feature-cost discount, user multiplier, and debt decay", () => {
+    const s = createInitialState();
+    const base = featureCost(s);
+    s.research = ["r_lean"]; // featureCost ×0.6
+    expect(featureCost(s)).toBe(Math.floor(base * 0.6));
+
+    s.features = 10;
+    s.research = ["r_lean", "r_growth"]; // users ×2
+    expect(usersGain(s)).toBe(Math.ceil((1 + 10 * B.USERS_PER_FEATURE) * 2));
+
+    s.research = ["r_observ", "r_autoref"]; // debt -6/s
+    s.debt = 100;
+    const bug = createBugClock();
+    tick(s, 1, bug, () => 0.5);
+    expect(researchMods(s).debtDecay).toBe(6);
+    expect(s.debt).toBeLessThan(100); // decayed (no devs adding debt)
+  });
+
+  it("autocode adds LoC independent of debt penalty", () => {
+    const s = createInitialState();
+    s.research = ["r_lean", "r_growth", "r_autocode"]; // +60 LoC/s
+    s.debt = 1e9; // prodMult floored
+    const bug = createBugClock();
+    tick(s, 1, bug, () => 0.5);
+    expect(s.loc).toBeGreaterThan(50); // autocode flows despite debt
+  });
+});
+
+describe("achievements (Phase 3)", () => {
+  it("unlock by condition and grant a global multiplier; survive prestige", () => {
+    const s = createInitialState();
+    s.loc = 1000;
+    const got = newlyUnlocked(s);
+    expect(got).toContain("a_loc1k");
+    s.achievements = ["a_loc1k", "a_users50"];
+    expect(achievementMult(s)).toBeCloseTo(1.02, 5);
+
+    // prestige resets the run but keeps achievements
+    s.totalWon = 1e6;
+    prestige(s);
+    expect(s.achievements).toEqual(["a_loc1k", "a_users50"]);
+    expect(s.research).toEqual([]);
+    expect(s.upgrades).toEqual([]);
   });
 });
 

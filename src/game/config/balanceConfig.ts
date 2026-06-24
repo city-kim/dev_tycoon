@@ -9,6 +9,8 @@ export const BALANCE = {
   REV_PER_USER: 1.0,
   /** 부채 페널티 강도 (작을수록 가혹): prodMult = 1/(1+debt/SOFTCAP) */
   DEBT_SOFTCAP: 120,
+  /** 생산성 하한 — 부채가 극심해도 이만큼은 생산(데스스파이럴 방지) */
+  PROD_FLOOR: 0.08,
   /** 첫 기능 출시 LoC 비용 */
   FEATURE_BASE: 8,
   /** 기능 비용 증가율 */
