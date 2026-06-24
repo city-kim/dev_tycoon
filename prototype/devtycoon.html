@@ -1,0 +1,431 @@
+<!--
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  데브 타이쿤 (DevTycoon) — 방치형 개발자 게임 프로토타입               │
+  │                                                                     │
+  │  ⚠ 저장(persistence)에 대하여:                                       │
+  │  이 프로토타입은 미리보기 환경 제약 때문에 상태를 메모리에만 둡니다.  │
+  │  (새로고침하면 초기화됨)                                              │
+  │                                                                     │
+  │  실제 배포 시 아래 두 줄만 바꾸면 저장 + 오프라인 보상이 동작합니다:  │
+  │                                                                     │
+  │  // 저장                                                            │
+  │  function save(){                                                   │
+  │    S.lastSave = Date.now();                                         │
+  │    localStorage.setItem('devtycoon', JSON.stringify(S));            │
+  │  }                                                                  │
+  │                                                                     │
+  │  // 불러오기 + 오프라인 정산(최대 8시간)                              │
+  │  function load(){                                                   │
+  │    const raw = localStorage.getItem('devtycoon');                   │
+  │    if(!raw) return;                                                 │
+  │    Object.assign(S, JSON.parse(raw));                               │
+  │    const dt = Math.min((Date.now()-S.lastSave)/1000, 8*3600);       │
+  │    S.loc += locPerSec()*dt;                                         │
+  │    S.won += wonPerSec()*dt;                                         │
+  │    S.debt += debtPerSec()*dt;                                       │
+  │    log(`☕ 자리를 비운 사이 ${fmt(locPerSec()*dt)} 코드를 작성했습니다`);│
+  │  }                                                                  │
+  └─────────────────────────────────────────────────────────────────────┘
+-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>데브 타이쿤</title>
+<style>
+  :root{
+    --bg:#0e0f1a; --panel:#181a2a; --panel-2:#20233a; --panel-3:#262a45;
+    --ink:#e8e9f3; --muted:#8b8fb0; --faint:#5a5e80;
+    --green:#4ade80; --gold:#fbbf24; --debt:#f87171; --accent:#818cf8;
+    --line:rgba(255,255,255,0.07);
+    --mono:ui-monospace,"SF Mono",Menlo,Monaco,"Cascadia Code",Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    --glitch:0; /* 0..1, 부채에 따라 JS가 갱신 */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(129,140,248,.10), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, rgba(74,222,128,.06), transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--sans);
+    padding:18px; min-height:100%;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  /* ── 헤더 ── */
+  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .logo{font-family:var(--mono);font-weight:700;font-size:22px;letter-spacing:-.5px}
+  .logo .br{color:var(--accent)}
+  .logo .fn{color:var(--green)}
+  .cursor{display:inline-block;width:9px;height:18px;background:var(--green);
+    transform:translateY(2px);margin-left:2px;animation:blink 1.1s step-end infinite}
+  @keyframes blink{50%{opacity:0}}
+  .tag{font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+  /* ── 자원 바 ── */
+  .res{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:11px 13px;display:flex;flex-direction:column;gap:3px}
+  .stat .k{font-size:11px;color:var(--muted);font-family:var(--mono);
+    text-transform:uppercase;letter-spacing:.6px}
+  .stat .v{font-family:var(--mono);font-size:19px;font-weight:600;line-height:1.1}
+  .stat .r{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .v.loc{color:var(--green)} .v.won{color:var(--gold)}
+  .v.usr{color:var(--accent)} .v.dbt{color:var(--debt)} .v.car{color:#f0abfc}
+
+  .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px;align-items:start}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:16px;margin-bottom:14px;position:relative;overflow:hidden}
+  .card h2{font-size:12px;font-family:var(--mono);color:var(--muted);
+    text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;
+    display:flex;justify-content:space-between;align-items:center}
+
+  /* ── 액션 버튼 ── */
+  .actions{display:flex;flex-direction:column;gap:10px}
+  .bigbtn{position:relative;border:1px solid var(--line);border-radius:12px;
+    background:var(--panel-2);color:var(--ink);cursor:pointer;
+    padding:16px;text-align:left;font-family:var(--sans);transition:.12s;overflow:hidden}
+  .bigbtn:hover{background:var(--panel-3);transform:translateY(-1px)}
+  .bigbtn:active{transform:translateY(0) scale(.995)}
+  .bigbtn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+  .bigbtn .t{font-size:15px;font-weight:600;margin-bottom:3px}
+  .bigbtn .s{font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .bigbtn.code{background:linear-gradient(180deg,rgba(74,222,128,.14),var(--panel-2))}
+  .bigbtn.code:hover{background:linear-gradient(180deg,rgba(74,222,128,.22),var(--panel-3))}
+  .bigbtn.ship{background:linear-gradient(180deg,rgba(129,140,248,.13),var(--panel-2))}
+
+  /* ── 부채 미터 ── */
+  .debtwrap{margin-top:2px}
+  .meter{height:12px;border-radius:7px;background:#0c0d16;
+    border:1px solid var(--line);overflow:hidden;position:relative}
+  .meter .fill{height:100%;width:0%;border-radius:6px;
+    background:linear-gradient(90deg,#facc15,var(--debt));transition:width .25s}
+  .debtrow{display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:12px;color:var(--muted);margin:9px 0}
+  .penalty{color:var(--debt);font-weight:600}
+  .refbtn{width:100%;border:1px solid var(--debt);color:#fecaca;
+    background:rgba(248,113,113,.10);border-radius:10px;padding:11px;
+    cursor:pointer;font-family:var(--mono);font-size:13px;transition:.12s}
+  .refbtn:hover:not(:disabled){background:rgba(248,113,113,.2)}
+  .refbtn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ── 채용 리스트 ── */
+  .hire{display:flex;align-items:center;gap:12px;padding:11px 12px;
+    border:1px solid var(--line);border-radius:11px;background:var(--panel-2);
+    margin-bottom:9px;cursor:pointer;transition:.12s;text-align:left;width:100%;color:var(--ink)}
+  .hire:hover:not(:disabled){background:var(--panel-3);border-color:rgba(129,140,248,.4)}
+  .hire:disabled{opacity:.45;cursor:not-allowed}
+  .hire .emo{font-size:24px;width:34px;text-align:center}
+  .hire .mid{flex:1;min-width:0}
+  .hire .nm{font-size:14px;font-weight:600;display:flex;gap:8px;align-items:center}
+  .hire .cnt{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .hire .ds{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+  .hire .cost{font-family:var(--mono);font-size:13px;color:var(--gold);
+    text-align:right;white-space:nowrap}
+
+  /* ── 환생 ── */
+  .prestige{border-color:rgba(240,171,252,.25);
+    background:linear-gradient(180deg,rgba(240,171,252,.07),var(--panel))}
+  .prebtn{width:100%;border:1px solid #f0abfc;color:#f5d0fe;
+    background:rgba(240,171,252,.12);border-radius:11px;padding:13px;
+    cursor:pointer;font-size:13px;font-family:var(--mono);transition:.12s}
+  .prebtn:hover:not(:disabled){background:rgba(240,171,252,.22)}
+  .prebtn:disabled{opacity:.4;cursor:not-allowed}
+
+  /* ── 커밋 로그 ── */
+  .log{font-family:var(--mono);font-size:12px;line-height:1.7;
+    max-height:200px;overflow:hidden;color:var(--muted)}
+  .log div{opacity:0;animation:slideIn .3s forwards}
+  .log .g{color:var(--green)} .log .y{color:var(--gold)}
+  .log .r{color:var(--debt)} .log .p{color:#f0abfc}
+  @keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:.9;transform:none}}
+
+  /* ── 부채 글리치(시그니처) ── */
+  .glitchable::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(248,113,113,.05) 0 1px,transparent 1px 3px);
+    opacity:calc(var(--glitch)*0.9);mix-blend-mode:screen;transition:opacity .4s}
+  @media (prefers-reduced-motion:no-preference){
+    .glitchable{animation:jitter .2s infinite}
+    @keyframes jitter{
+      0%,100%{transform:translate(0,0)}
+      50%{transform:translate(calc(var(--glitch)*0.6px),calc(var(--glitch)*-0.4px))}
+    }
+  }
+  .float{position:fixed;font-family:var(--mono);font-weight:700;color:var(--green);
+    pointer-events:none;font-size:14px;animation:floatUp .8s ease-out forwards;z-index:50}
+  @keyframes floatUp{to{transform:translateY(-34px);opacity:0}}
+
+  .hint{font-family:var(--mono);font-size:11px;color:var(--faint);
+    text-align:center;margin-top:18px;line-height:1.6}
+
+  @media (max-width:780px){
+    .res{grid-template-columns:repeat(2,1fr)}
+    .grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><span class="br">&lt;</span>dev<span class="fn">.tycoon</span><span class="br">/&gt;</span><span class="cursor"></span></div>
+    <div class="tag">// 빠르게 짜고 비싸게 갚는다</div>
+  </header>
+
+  <div class="res">
+    <div class="stat"><span class="k">코드 LoC</span><span class="v loc" id="locV">0</span><span class="r" id="locR">+0/s</span></div>
+    <div class="stat"><span class="k">수익 ₩</span><span class="v won" id="wonV">0</span><span class="r" id="wonR">+0/s</span></div>
+    <div class="stat"><span class="k">유저</span><span class="v usr" id="usrV">0</span><span class="r" id="usrR">기능 0개</span></div>
+    <div class="stat"><span class="k">기술부채</span><span class="v dbt" id="dbtV">0</span><span class="r" id="dbtR">+0/s</span></div>
+    <div class="stat"><span class="k">경력</span><span class="v car" id="carV">0</span><span class="r" id="carR">전역 +0%</span></div>
+  </div>
+
+  <div class="grid">
+    <!-- 좌측: 액션 -->
+    <div>
+      <div class="card glitchable" id="mainCard">
+        <h2>작업대 <span id="prodMultLbl" style="color:var(--green)">생산성 100%</span></h2>
+        <div class="actions">
+          <button class="bigbtn code" id="codeBtn">
+            <div class="t">⌨️ 코드 짜기</div>
+            <div class="s" id="codeSub">+1 LoC · 살짝 부채 +</div>
+          </button>
+          <button class="bigbtn ship" id="shipBtn">
+            <div class="t">🚀 기능 출시</div>
+            <div class="s" id="shipSub">비용 8 LoC → 유저 +1</div>
+          </button>
+        </div>
+      </div>
+
+      <div class="card glitchable" id="debtCard">
+        <h2>기술 부채</h2>
+        <div class="debtwrap">
+          <div class="meter"><div class="fill" id="debtFill"></div></div>
+          <div class="debtrow">
+            <span id="debtTxt">부채 0</span>
+            <span class="penalty" id="debtPen">페널티 0%</span>
+          </div>
+          <button class="refbtn" id="refBtn">♻️ 리팩토링 — 50₩</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>커밋 로그</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+
+    <!-- 우측: 채용 + 환생 -->
+    <div>
+      <div class="card">
+        <h2>개발자 채용</h2>
+        <div id="hireList"></div>
+      </div>
+
+      <div class="card prestige">
+        <h2 style="color:#f0abfc">퇴사 후 창업 (환생)</h2>
+        <p style="font-size:12px;color:var(--muted);font-family:var(--mono);line-height:1.6;margin-bottom:12px">
+          전부 초기화하는 대신 누적 수익만큼 <b style="color:#f0abfc">경력</b>을 얻습니다.<br>
+          경력 1당 코드·수익 생산이 영구히 <b style="color:#f0abfc">+2%</b>.
+        </p>
+        <button class="prebtn" id="preBtn">필요 수익 1M ₩</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">requestAnimationFrame 게임 루프 · 모든 수치는 &lt;script&gt; 상단 상수에서 조절 가능<br>저장/오프라인 보상은 파일 최상단 주석 참고 (미리보기라 메모리에만 저장됨)</div>
+</div>
+
+<script>
+/* ════════════════════ 튜닝 상수 (여기만 만지면 밸런싱 됨) ════════════════════ */
+const REV_PER_USER   = 1.0;    // 유저 1명당 ₩/초
+const DEBT_SOFTCAP   = 120;    // 부채 페널티 강도 (작을수록 가혹)
+const FEATURE_BASE   = 8;      // 첫 기능 출시 LoC 비용
+const FEATURE_GROW   = 1.55;   // 기능 비용 증가율
+const COST_GROW      = 1.15;   // 개발자 채용 비용 증가율
+const CAREER_DIV     = 1e6;    // 환생 환산 기준 (이 수익마다 경력 ↑)
+const CAREER_POW     = 0.6;    // 환생 보상 곡선
+const CAREER_BONUS   = 0.02;   // 경력 1당 전역 배율
+
+const DEVS = [
+  {id:'jr',  emo:'🧑‍💻', nm:'주니어 개발자', base:15,      loc:0.3,  debt:0.05},
+  {id:'sr',  emo:'👩‍💻', nm:'시니어 개발자', base:100,     loc:2,    debt:0.20},
+  {id:'tl',  emo:'🧙',   nm:'테크 리드',     base:1100,    loc:12,   debt:0.80},
+  {id:'fs',  emo:'🦸',   nm:'풀스택 마법사', base:12000,   loc:70,   debt:3.0 },
+  {id:'ai',  emo:'🤖',   nm:'AI 코딩 에이전트', base:130000, loc:400, debt:12  },
+  {id:'oss', emo:'🌍',   nm:'오픈소스 군단', base:1.4e6,   loc:2500, debt:50  },
+];
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+const S = {
+  loc:0, won:0, users:0, debt:0, career:0,
+  features:0, totalWon:0, devs:{}, lastSave:Date.now()
+};
+DEVS.forEach(d=>S.devs[d.id]=0);
+
+const $ = id=>document.getElementById(id);
+
+/* ── 파생 수치 ── */
+const careerMult = ()=> 1 + CAREER_BONUS*S.career;
+const prodMult   = ()=> 1/(1 + S.debt/DEBT_SOFTCAP);
+const rawLoc     = ()=> DEVS.reduce((s,d)=>s + S.devs[d.id]*d.loc, 0);
+const locPerSec  = ()=> rawLoc() * prodMult() * careerMult();
+const debtPerSec = ()=> DEVS.reduce((s,d)=>s + S.devs[d.id]*d.debt, 0);
+const wonPerSec  = ()=> S.users * REV_PER_USER * prodMult() * careerMult();
+const clickPow   = ()=> (1 + S.career) * careerMult();
+const featureCost= ()=> Math.floor(FEATURE_BASE * Math.pow(FEATURE_GROW, S.features));
+const usersGain  = ()=> Math.ceil(1 + S.features*0.15);
+const devCost    = d => Math.floor(d.base * Math.pow(COST_GROW, S.devs[d.id]));
+const refundCost = ()=> Math.max(50, S.debt*5);
+const careerGain = ()=> Math.floor(Math.pow(S.totalWon/CAREER_DIV, CAREER_POW));
+
+/* ── 숫자 포맷 ── */
+function fmt(n){
+  if(n<0) return '-'+fmt(-n);
+  if(n<1000) return (n<10 && n%1!==0)? n.toFixed(1) : Math.floor(n).toString();
+  const u=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc']; let i=0;
+  while(n>=1000 && i<u.length-1){n/=1000;i++;}
+  return n.toFixed(2)+u[i];
+}
+
+/* ── 로그 ── */
+function log(html,cls=''){
+  const el=$('log'); const d=document.createElement('div');
+  if(cls) d.className=cls; d.innerHTML=html;
+  el.prepend(d);
+  while(el.children.length>9) el.lastChild.remove();
+}
+
+/* ── 액션 ── */
+$('codeBtn').onclick = e=>{
+  const g=clickPow(); S.loc+=g; S.debt+=0.03;
+  floatTxt(e, '+'+fmt(g));
+};
+$('shipBtn').onclick = ()=>{
+  const c=featureCost();
+  if(S.loc<c) return;
+  S.loc-=c; S.features++; const g=usersGain(); S.users+=g;
+  log(`<span class="g">🚀 기능 #${S.features} 출시</span> · 유저 +${g}`);
+};
+$('refBtn').onclick = ()=>{
+  const c=refundCost();
+  if(S.won<c || S.debt<0.1) return;
+  S.won-=c; const cleared=S.debt; S.debt=0;
+  log(`<span class="p">♻️ 리팩토링 완료</span> · 부채 ${fmt(cleared)} 청산`);
+};
+$('preBtn').onclick = ()=>{
+  const g=careerGain();
+  if(g<1) return;
+  if(!confirm(`퇴사하고 창업합니다.\n현재 진행도가 초기화되고 경력 +${g} 을 얻습니다.\n진행할까요?`)) return;
+  S.career+=g;
+  S.loc=0; S.won=0; S.users=0; S.debt=0; S.features=0; S.totalWon=0;
+  DEVS.forEach(d=>S.devs[d.id]=0);
+  log(`<span class="p">🎓 창업! 경력 +${g}</span> (총 ${S.career})`);
+};
+
+/* 채용 버튼 생성 */
+DEVS.forEach(d=>{
+  const b=document.createElement('button');
+  b.className='hire'; b.id='hire-'+d.id;
+  b.onclick=()=>{
+    const c=devCost(d);
+    if(S.won<c) return;
+    S.won-=c; S.devs[d.id]++;
+    log(`<span class="y">+ ${d.nm} 채용</span> (${S.devs[d.id]}명)`);
+  };
+  $('hireList').appendChild(b);
+});
+
+/* 떠오르는 +텍스트 */
+function floatTxt(e,txt){
+  const f=document.createElement('div'); f.className='float'; f.textContent=txt;
+  f.style.left=(e.clientX-10)+'px'; f.style.top=(e.clientY-14)+'px';
+  document.body.appendChild(f); setTimeout(()=>f.remove(),800);
+}
+
+/* ── 게임 루프 ── */
+let last=performance.now(), bugTimer=0;
+function tick(now){
+  const dt=Math.min((now-last)/1000,0.5); last=now;
+
+  S.loc  += locPerSec()*dt;
+  const w = wonPerSec()*dt;
+  S.won  += w; S.totalWon += w;
+  S.debt += debtPerSec()*dt;
+
+  // 부채 높을 때 가끔 버그 이벤트(연출)
+  if(S.debt>DEBT_SOFTCAP){
+    bugTimer+=dt;
+    if(bugTimer>5+Math.random()*5){
+      bugTimer=0; const spike=S.debt*0.04; S.debt+=spike;
+      log(`<span class="r">🐛 버그 발생</span> · 부채 +${fmt(spike)}`);
+    }
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+
+/* ── 렌더 ── */
+function render(){
+  $('locV').textContent=fmt(S.loc);
+  $('locR').textContent='+'+fmt(locPerSec())+'/s';
+  $('wonV').textContent=fmt(S.won);
+  $('wonR').textContent='+'+fmt(wonPerSec())+'/s';
+  $('usrV').textContent=fmt(S.users);
+  $('usrR').textContent='기능 '+S.features+'개';
+  $('dbtV').textContent=fmt(S.debt);
+  $('dbtR').textContent='+'+fmt(debtPerSec())+'/s';
+  $('carV').textContent=fmt(S.career);
+  $('carR').textContent='전역 +'+Math.round(CAREER_BONUS*S.career*100)+'%';
+
+  const pm=prodMult();
+  $('prodMultLbl').textContent='생산성 '+Math.round(pm*100)+'%';
+  $('prodMultLbl').style.color = pm>0.8?'var(--green)':pm>0.5?'var(--gold)':'var(--debt)';
+
+  // 코드/출시 버튼
+  $('codeSub').textContent='+'+fmt(clickPow())+' LoC · 부채 살짝 +';
+  const fc=featureCost();
+  $('shipSub').textContent=`비용 ${fmt(fc)} LoC → 유저 +${usersGain()}`;
+  $('shipBtn').disabled = S.loc<fc;
+
+  // 부채 미터
+  const ratio=Math.min(S.debt/(DEBT_SOFTCAP*2),1);
+  $('debtFill').style.width=(ratio*100)+'%';
+  $('debtTxt').textContent='부채 '+fmt(S.debt);
+  $('debtPen').textContent='페널티 -'+Math.round((1-pm)*100)+'%';
+  const rc=refundCost();
+  $('refBtn').textContent=`♻️ 리팩토링 — ${fmt(rc)}₩`;
+  $('refBtn').disabled = S.won<rc || S.debt<0.1;
+  // 글리치 강도
+  document.documentElement.style.setProperty('--glitch', Math.min(S.debt/(DEBT_SOFTCAP*3),1).toFixed(2));
+
+  // 채용
+  DEVS.forEach(d=>{
+    const c=devCost(d); const b=$('hire-'+d.id);
+    b.disabled = S.won<c;
+    b.innerHTML=`<span class="emo">${d.emo}</span>
+      <span class="mid">
+        <span class="nm">${d.nm} <span class="cnt">×${S.devs[d.id]}</span></span>
+        <span class="ds">+${d.loc} LoC/s · 부채 +${d.debt}/s</span>
+      </span>
+      <span class="cost">${fmt(c)}₩</span>`;
+  });
+
+  // 환생
+  const g=careerGain();
+  $('preBtn').disabled = g<1;
+  $('preBtn').textContent = g<1
+    ? `필요 수익 ${fmt(CAREER_DIV)} ₩ (현재 ${fmt(S.totalWon)})`
+    : `🎓 창업하고 경력 +${g} 획득`;
+}
+
+log('<span class="g">$ npm init</span> · 첫 코드를 짜보세요');
+render();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
