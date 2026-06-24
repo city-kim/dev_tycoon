@@ -8,8 +8,11 @@ import { DebtCard } from "./components/DebtCard";
 import { CommitLog } from "./components/CommitLog";
 import { HireList } from "./components/HireList";
 import { PrestigeCard } from "./components/PrestigeCard";
+import { SaveCard } from "./components/SaveCard";
+import { OfflineModal } from "./components/OfflineModal";
 
 const DISPLAY_INTERVAL = 0.1; // seconds — throttled UI refresh (~10fps)
+const AUTOSAVE_MS = 15000; // debounced autosave cadence
 
 /**
  * The single game loop. Advances the sim every frame (delta-timed, clamped),
@@ -44,8 +47,28 @@ function useGameLoop() {
   }, []);
 }
 
+/** Autosave on an interval + whenever the tab is hidden or closed. */
+function usePersistence() {
+  useEffect(() => {
+    const { saveNow } = useGame.getState();
+    const timer = window.setInterval(saveNow, AUTOSAVE_MS);
+    const onHide = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    window.addEventListener("visibilitychange", onHide);
+    window.addEventListener("beforeunload", saveNow);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("beforeunload", saveNow);
+      saveNow(); // persist on unmount (covers HMR / navigation)
+    };
+  }, []);
+}
+
 export default function App() {
   useGameLoop();
+  usePersistence();
 
   return (
     <div className="wrap">
@@ -69,13 +92,16 @@ export default function App() {
         <div>
           <HireList />
           <PrestigeCard />
+          <SaveCard />
         </div>
       </div>
+
+      <OfflineModal />
 
       <div className="hint">
         requestAnimationFrame 게임 루프 · 모든 수치는 src/game/config·content 에서 조절
         <br />
-        저장/오프라인 보상은 로드맵 Phase 1에서 추가됩니다 (현재는 메모리에만 저장)
+        진행상황은 localStorage에 자동 저장됩니다 · 오프라인 정산 최대 8시간
       </div>
     </div>
   );

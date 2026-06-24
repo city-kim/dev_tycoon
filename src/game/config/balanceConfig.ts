@@ -29,4 +29,10 @@ export const BALANCE = {
   REFUND_MULT: 5,
   /** 기능 1개당 출시 유저 증가 계수 */
   USERS_PER_FEATURE: 0.15,
+  /** 오프라인 정산 최대 시간 (초) — 8h */
+  OFFLINE_CAP_SEC: 8 * 3600,
+  /** 오프라인 생산 효율 (< 1: 능동 플레이가 항상 우위) */
+  OFFLINE_EFFICIENCY: 0.5,
+  /** 이 시간(초) 미만의 부재는 정산 요약을 띄우지 않음 */
+  OFFLINE_MIN_SEC: 60,
 } as const;

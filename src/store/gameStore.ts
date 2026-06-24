@@ -17,6 +17,14 @@ import { createInitialState } from "../game/sim/state";
 import { createBugClock, tick, type SimEvent } from "../game/sim/tick";
 import * as A from "../game/sim/actions";
 import {
+  clearSave,
+  exportSave,
+  importSave,
+  loadState,
+  saveState,
+} from "../game/save/storage";
+import { applyOfflineProgress, type OfflineSummary } from "../game/save/offline";
+import {
   careerGain,
   clickPow,
   devCost,
@@ -29,6 +37,14 @@ import {
 /** Authoritative game state singleton (mutated in place by sim + actions). */
 export const sim: GameState = createInitialState();
 const bug = createBugClock();
+
+/** Load persisted progress + settle offline time before the first render. */
+const loaded = loadState();
+let initialOffline: OfflineSummary | null = null;
+if (loaded) {
+  Object.assign(sim, loaded);
+  initialOffline = applyOfflineProgress(sim, (Date.now() - sim.lastSave) / 1000);
+}
 
 let logSeq = 0;
 export interface LogEntry extends SimEvent {
@@ -103,6 +119,8 @@ function computeSnapshot(s: GameState): Snapshot {
 interface Store {
   log: LogEntry[];
   snap: Snapshot;
+  /** offline-progress summary from this session's load (null if none) */
+  offline: OfflineSummary | null;
   /** advance the sim by dt seconds (called every frame) */
   advance: (dt: number) => void;
   /** recompute the display snapshot (called ~10fps and after each action) */
@@ -113,6 +131,16 @@ interface Store {
   refactorNow: () => void;
   hire: (id: string) => void;
   prestigeNow: () => boolean;
+  /** persist now (autosave timer + lifecycle handlers) */
+  saveNow: () => void;
+  /** dismiss the "while you were away" summary */
+  dismissOffline: () => void;
+  /** export current save as a portable string */
+  exportNow: () => string;
+  /** import a save string; returns success */
+  importNow: (text: string) => boolean;
+  /** wipe everything (career included) and start fresh */
+  hardReset: () => void;
 }
 
 function pushEvents(get: () => Store, set: (p: Partial<Store>) => void, events: SimEvent[]) {
@@ -126,8 +154,13 @@ function logLine(get: () => Store, set: (p: Partial<Store>) => void, e: SimEvent
 }
 
 export const useGame = create<Store>((set, get) => ({
-  log: [entry({ html: "$ npm init · 첫 코드를 짜보세요", cls: "g" })],
+  log: [
+    initialOffline
+      ? entry({ html: "☕ 복귀! 자리를 비운 사이의 진행이 정산됐습니다", cls: "y" })
+      : entry({ html: "$ npm init · 첫 코드를 짜보세요", cls: "g" }),
+  ],
   snap: computeSnapshot(sim),
+  offline: initialOffline,
 
   advance: (dt) => {
     const events = tick(sim, dt, bug);
@@ -169,5 +202,34 @@ export const useGame = create<Store>((set, get) => ({
     logLine(get, set, { html: `🎓 창업! 경력 +${gain} (총 ${sim.career})`, cls: "p" });
     get().refresh();
     return true;
+  },
+
+  saveNow: () => {
+    saveState(sim, Date.now());
+  },
+
+  dismissOffline: () => set({ offline: null }),
+
+  exportNow: () => exportSave(sim),
+
+  importNow: (text) => {
+    const next = importSave(text);
+    if (!next) return false;
+    Object.assign(sim, next);
+    bug.timer = 0;
+    bug.nextAt = 0;
+    saveState(sim, Date.now());
+    logLine(get, set, { html: "📥 세이브 불러오기 완료", cls: "y" });
+    get().refresh();
+    return true;
+  },
+
+  hardReset: () => {
+    Object.assign(sim, createInitialState());
+    bug.timer = 0;
+    bug.nextAt = 0;
+    clearSave();
+    set({ offline: null, log: [entry({ html: "$ rm -rf · 새 출발", cls: "g" })] });
+    get().refresh();
   },
 }));

@@ -443,6 +443,113 @@ header {
   line-height: 1.6;
 }
 
+/* ── 저장 관리 ── */
+.save-btns {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.save-btn {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  transition: 0.12s;
+}
+.save-btn:hover:not(:disabled) {
+  background: var(--panel-3);
+}
+.save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.save-btn.danger {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+.save-btn.danger:hover {
+  background: rgba(248, 113, 113, 0.15);
+}
+.save-area {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 70px;
+  resize: vertical;
+  background: #0c0d16;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 9px;
+  word-break: break-all;
+}
+.save-import {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── 오프라인 정산 모달 ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 16, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 18px;
+  animation: slideIn 0.2s;
+}
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.modal h2 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.modal-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.modal-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 9px 12px;
+  background: var(--panel-2);
+  border-radius: 9px;
+}
+.modal-row .g {
+  color: var(--green);
+}
+.modal-row .y {
+  color: var(--gold);
+}
+.modal-row .r {
+  color: var(--debt);
+}
+
 @media (max-width: 780px) {
   .res {
     grid-template-columns: repeat(2, 1fr);
