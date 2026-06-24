@@ -8,3 +8,5 @@ coverage
 *.log
 
 *.tsbuildinfo
+pnpm-lock.yaml
+pnpm-workspace.yaml
