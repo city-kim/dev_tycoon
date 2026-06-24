@@ -8,5 +8,6 @@ coverage
 *.log
 
 *.tsbuildinfo
-pnpm-lock.yaml
-pnpm-workspace.yaml
+
+# project uses pnpm — keep pnpm lockfile, ignore npm's
+package-lock.json

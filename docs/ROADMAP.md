@@ -38,7 +38,7 @@ MVP 로직을 우리 아키텍처 규칙(`rules/game/architecture.md`)에 맞게
 - **단일 rAF 틱 루프** + 델타 클램프 (`idle-game-loop` 스킬).
 - Zustand 스토어 + 셀렉터. 라이브 카운터는 리프 컴포넌트로 격리(전체 리렌더 방지).
 - 빅넘버 표기 유지(`fmt`) → 추후 `break_infinity` 도입 여지.
-- **수용 기준:** MVP와 동일 플레이 가능 + `npm run build` 통과 + sim 단위테스트 그린.
+- **수용 기준:** MVP와 동일 플레이 가능 + `pnpm build` 통과 + sim 단위테스트 그린.
 
 ### Phase 1 — 영속성 & 오프라인 (원본 메모 [1]) ✅ 완료
 `localstorage-save-system` 스킬 + `rules/game/save-system.md`.
@@ -76,7 +76,7 @@ MVP 로직을 우리 아키텍처 규칙(`rules/game/architecture.md`)에 맞게
 - 사운드(뮤트 토글, 지연로딩 훅).
 - 반응형/모바일(현 CSS는 780px 브레이크 보유), 접근성(키보드/대비/ARIA).
 - 성능: 라이브 카운터 리렌더 감사, 60fps 틱 유지.
-- 정적 빌드 산출 → `index.html` 로컬 더블클릭 또는 `npm run preview`로 실행.
+- 정적 빌드 산출 → `index.html` 로컬 더블클릭 또는 `pnpm preview`로 실행.
 
 ---
 

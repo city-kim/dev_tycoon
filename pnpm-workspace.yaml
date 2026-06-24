@@ -1,0 +1,4 @@
+# pnpm settings (pnpm 11 reads config here, not from package.json's "pnpm" field).
+# Allow esbuild's postinstall so Vite's bundler binary is built.
+allowBuilds:
+  esbuild: true

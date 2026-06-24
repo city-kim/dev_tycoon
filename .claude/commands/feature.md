@@ -11,6 +11,6 @@ Run the pipeline, handing artifacts between specialists:
 3. **Plan** — delegate to `planner` (or `architect` for cross-cutting changes): slice the implementation into thin, verifiable steps respecting `.claude/rules/game/architecture.md`.
 4. **Implement** — delegate to `react-game-engineer`: build slice by slice, typechecking/building after each.
 5. **Review** — delegate to `code-reviewer` and `react-reviewer`; for hot-path changes also `performance-optimizer`.
-6. **Verify** — use the `browser-qa` / `click-path-audit` skills to playtest the feature locally (`npm run dev`).
+6. **Verify** — use the `browser-qa` / `click-path-audit` skills to playtest the feature locally (`pnpm dev`).
 
 Respect the constraints: **React + Vite + TS, local-only, no server, no DB.** Report what each stage produced and stop for my input if a stage's output conflicts with the pacing budget.

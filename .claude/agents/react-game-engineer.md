@@ -26,7 +26,7 @@ You are the implementation engineer for **dev_tycoon** (React + Vite + TypeScrip
 1. Read `.claude/rules/react/*`, `.claude/rules/typescript/*`, `.claude/rules/web/*`, and `.claude/rules/game/*` before writing code.
 2. Pull constants from `balance-tuner`'s config; pull content shape from `game-designer`.
 3. Implement in thin slices: store + tick → click → one generator → save/load → offline → prestige → upgrades.
-4. After each slice, run `npm run build` / typecheck and (if present) tests. Fix before moving on.
+4. After each slice, run `pnpm build` / typecheck and (if present) `pnpm test`. Fix before moving on. (Project uses **pnpm**, not npm.)
 5. Keep components small and selector-driven. Defer game-feel polish to `motion-ui` patterns.
 
 ## Output

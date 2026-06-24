@@ -70,4 +70,6 @@ src/
 
 ## Verify
 
-`npm run build` (typecheck) must pass before review. Playtest locally with `npm run dev` and the `/playtest` command. No network requests should appear in the console.
+`pnpm build` (typecheck) must pass before review. Playtest locally with `pnpm dev` and the `/playtest` command. No network requests should appear in the console.
+
+**Package manager: pnpm** (see `pnpm-workspace.yaml`). Use `pnpm install` / `pnpm dev` / `pnpm build` / `pnpm test` — not npm. `package-lock.json` is gitignored.
