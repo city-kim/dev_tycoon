@@ -7,6 +7,7 @@ import { Workbench } from "./components/Workbench";
 import { DebtCard } from "./components/DebtCard";
 import { CommitLog } from "./components/CommitLog";
 import { HireList } from "./components/HireList";
+import { DevRoomCanvas } from "./components/DevRoomCanvas";
 import { PrestigeCard } from "./components/PrestigeCard";
 import { SaveCard } from "./components/SaveCard";
 import { OfflineModal } from "./components/OfflineModal";
@@ -90,6 +91,7 @@ export default function App() {
           <CommitLog />
         </div>
         <div>
+          <DevRoomCanvas />
           <HireList />
           <PrestigeCard />
           <SaveCard />
