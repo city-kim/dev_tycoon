@@ -77,6 +77,7 @@ MVP 로직을 우리 아키텍처 규칙(`rules/game/architecture.md`)에 맞게
 - 반응형/모바일(현 CSS는 780px 브레이크 보유), 접근성(키보드/대비/ARIA).
 - 성능: 라이브 카운터 리렌더 감사, 60fps 틱 유지.
 - 정적 빌드 산출 → `index.html` 로컬 더블클릭 또는 `pnpm preview`로 실행.
+- **배포 ✅:** GitHub Actions로 `main` 푸시 시 GitHub Pages 자동 배포(`.github/workflows/deploy.yml`). 정적 호스팅이라 "서버/DB 없음" 제약 유지. → https://city-kim.github.io/dev_tycoon/
 
 ---
 

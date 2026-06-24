@@ -73,3 +73,7 @@ src/
 `pnpm build` (typecheck) must pass before review. Playtest locally with `pnpm dev` and the `/playtest` command. No network requests should appear in the console.
 
 **Package manager: pnpm** (see `pnpm-workspace.yaml`). Use `pnpm install` / `pnpm dev` / `pnpm build` / `pnpm test` — not npm. `package-lock.json` is gitignored.
+
+## Deploy
+
+Pushing to `main` auto-deploys to **GitHub Pages** via `.github/workflows/deploy.yml` (pnpm install → `pnpm build` → upload `dist/` → deploy). Live at https://city-kim.github.io/dev_tycoon/. This is **static hosting only** — it serves the built client, so the "no server / no DB" constraint still holds. `base: "./"` keeps the build working both on the Pages subpath and via local file open. One-time repo setup: Settings → Pages → Source = GitHub Actions.
