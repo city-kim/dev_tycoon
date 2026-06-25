@@ -30,6 +30,8 @@ export interface GameState {
   research: string[];
   /** unlocked achievement ids (permanent — survive prestige) */
   achievements: string[];
+  /** auto-refactor toggle: spend part of income on debt each tick (a preference) */
+  autoRefactor: boolean;
   /** epoch ms of last save (used by Phase 1 persistence) */
   lastSave: number;
 }

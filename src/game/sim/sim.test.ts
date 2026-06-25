@@ -18,6 +18,7 @@ import { DEVS } from "../content/devs";
 import { getResearch } from "../content/research";
 import { getUpgrade } from "../content/upgrades";
 import { newlyUnlocked } from "../content/achievements";
+import { CRISIS_EVENT } from "../content/events";
 import { BALANCE as B } from "../config/balanceConfig";
 import { fmt } from "../../format/number";
 
@@ -138,6 +139,57 @@ describe("debt floor (death-spiral fix)", () => {
     expect(prodMult(s)).toBe(B.PROD_FLOOR);
     s.debt = 0;
     expect(prodMult(s)).toBe(1);
+  });
+});
+
+describe("debt-followability devices", () => {
+  it("refactor fully clears when ₩ suffices", () => {
+    const s = createInitialState();
+    s.debt = 40;
+    s.won = 1000;
+    expect(refactor(s)).toBe(40);
+    expect(s.debt).toBe(0);
+    expect(s.won).toBe(1000 - 40 * B.REFUND_MULT);
+  });
+
+  it("refactor does a partial clear when ₩ is insufficient (income always chips debt)", () => {
+    const s = createInitialState();
+    s.debt = 100;
+    s.won = 200; // only enough for 200/5 = 40 debt
+    expect(refactor(s)).toBe(40);
+    expect(s.debt).toBe(60);
+    expect(s.won).toBe(0);
+  });
+
+  it("auto-refactor spends income to reduce debt only when enabled", () => {
+    const on = createInitialState();
+    on.users = 100;
+    on.debt = 50;
+    on.autoRefactor = true;
+    const off = createInitialState();
+    off.users = 100;
+    off.debt = 50;
+    tick(on, 1, createBugClock(), () => 0.5);
+    tick(off, 1, createBugClock(), () => 0.5);
+    expect(off.debt).toBe(50); // no devs → debt unchanged when auto off
+    expect(on.debt).toBeLessThan(50); // auto chipped it
+    expect(on.won).toBeLessThan(off.won); // ...by spending ₩
+  });
+
+  it("crisis event: both options resolve debt (always escapable)", () => {
+    const a = createInitialState();
+    a.debt = 5000;
+    a.won = 1000;
+    CRISIS_EVENT.options[0].apply(a); // 비상 대응팀: ₩40% 소모, 전액 청산
+    expect(a.debt).toBe(0);
+    expect(a.won).toBe(600);
+
+    const b = createInitialState();
+    b.debt = 5000;
+    b.users = 100;
+    CRISIS_EVENT.options[1].apply(b); // 서비스 동결: 부채 −90%, 유저 −20%
+    expect(b.debt).toBeCloseTo(500, 5);
+    expect(b.users).toBe(80);
   });
 });
 

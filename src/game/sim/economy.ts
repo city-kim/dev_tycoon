@@ -106,9 +106,8 @@ export const usersGain = (s: GameState): number =>
 export const devCost = (s: GameState, d: DevDef): number =>
   Math.floor(d.base * Math.pow(B.COST_GROW, s.devs[d.id]));
 
-/** 리팩토링(부채 전량 청산) 비용 (₩) */
-export const refundCost = (s: GameState): number =>
-  Math.max(B.REFUND_MIN, s.debt * B.REFUND_MULT);
+/** 부채 전량 청산 비용 (₩). 부분 청산은 청산량 × REFUND_MULT. */
+export const refundCost = (s: GameState): number => s.debt * B.REFUND_MULT;
 
 /** 환생 시 획득 경력 (sublinear) */
 export const careerGain = (s: GameState): number =>

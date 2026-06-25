@@ -281,6 +281,59 @@ header {
   letter-spacing: 0;
   text-transform: none;
 }
+.auto-toggle {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 9px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  transition: 0.12s;
+}
+.auto-toggle:hover {
+  background: var(--panel-3);
+}
+.auto-toggle.on {
+  border-color: rgba(74, 222, 128, 0.45);
+  color: var(--green);
+  background: rgba(74, 222, 128, 0.08);
+}
+.auto-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.auto-toggle.on .auto-dot {
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+}
+
+/* 강제 위기 모달 */
+.modal-crisis {
+  border-color: rgba(248, 113, 113, 0.6);
+  box-shadow: 0 20px 60px rgba(248, 113, 113, 0.25);
+}
+.crisis-badge {
+  font-size: 10px;
+  color: #fff;
+  background: var(--debt);
+  border-radius: 6px;
+  padding: 2px 7px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.modal-crisis .event-opt:hover {
+  border-color: rgba(248, 113, 113, 0.6);
+}
 
 /* ── 채용 리스트 ── */
 .hire {

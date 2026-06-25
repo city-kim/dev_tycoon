@@ -16,6 +16,8 @@ export interface EventDef {
   title: string;
   desc: string;
   options: EventOption[];
+  /** 강제 이벤트(부채 위기 등) — 무시할 수 없고, 모든 선택지가 부채를 해소한다 */
+  forced?: boolean;
 }
 
 export const EVENTS: readonly EventDef[] = [
@@ -131,3 +133,36 @@ export const EVENTS: readonly EventDef[] = [
 
 const BY_ID = new Map(EVENTS.map((e) => [e.id, e]));
 export const getEvent = (id: string): EventDef | undefined => BY_ID.get(id);
+
+/**
+ * 강제 발생하는 기술부채 위기 이벤트 (랜덤 풀에 포함되지 않음).
+ * 두 선택지 모두 부채를 대폭 해소 → ₩이 없어도 ②로 항상 탈출 가능.
+ */
+export const CRISIS_EVENT: EventDef = {
+  id: "debt_crisis",
+  emoji: "🚨",
+  title: "기술부채 위기",
+  desc: "기술부채가 임계치를 넘어 시스템이 마비 직전입니다. 지금 바로 해소해야 합니다.",
+  forced: true,
+  options: [
+    {
+      label: "🚑 비상 대응팀 투입 — 부채 전액 청산 (₩ 40% 소모)",
+      apply: (s) => {
+        const cost = Math.floor(s.won * 0.4);
+        s.won -= cost;
+        const cleared = s.debt;
+        s.debt = 0;
+        return `🚑 비상 대응 · 부채 ${Math.floor(cleared)} 청산, ₩ ${cost} 소모`;
+      },
+    },
+    {
+      label: "🧊 서비스 동결 — 부채 −90%, 유저 −20%",
+      apply: (s) => {
+        s.debt *= 0.1;
+        const lost = s.users - Math.floor(s.users * 0.8);
+        s.users = Math.floor(s.users * 0.8);
+        return `🧊 서비스 동결 · 부채 −90%, 유저 −${lost}`;
+      },
+    },
+  ],
+};

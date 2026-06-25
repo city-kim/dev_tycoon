@@ -17,6 +17,7 @@ export function createInitialState(): GameState {
     upgrades: [],
     research: [],
     achievements: [],
+    autoRefactor: false,
     lastSave: 0,
   };
 }

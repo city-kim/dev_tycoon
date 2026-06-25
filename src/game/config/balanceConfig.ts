@@ -25,10 +25,14 @@ export const BALANCE = {
   CAREER_BONUS: 0.02,
   /** 코드 짜기 클릭당 부채 증가 */
   CLICK_DEBT: 0.03,
-  /** 리팩토링 최소 비용 (₩) */
-  REFUND_MIN: 50,
-  /** 리팩토링 비용 계수: max(REFUND_MIN, debt * REFUND_MULT) */
+  /** 리팩토링 환율: 부채 1 청산당 ₩ 비용 (부분 청산도 동일 단가) */
   REFUND_MULT: 5,
+  /** 자동 리팩토링 ON일 때 매초 부채 상환에 쓰는 수익 비율 */
+  AUTO_REFACTOR_FRAC: 0.5,
+  /** 이 부채를 넘으면 강제 '기술부채 위기' 이벤트 발생 */
+  DEBT_CRISIS: 3000,
+  /** 위기 재무장 임계 — 부채가 이 값 아래로 내려가야 위기가 다시 발동 (히스테리시스) */
+  DEBT_CRISIS_REARM: 1500,
   /** 기능 1개당 출시 유저 증가 계수 */
   USERS_PER_FEATURE: 0.15,
   /** 오프라인 정산 최대 시간 (초) — 8h */

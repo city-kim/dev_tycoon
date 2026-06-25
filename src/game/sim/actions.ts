@@ -7,14 +7,7 @@ import type { DevDef, GameState } from "../types";
 import type { UpgradeDef } from "../content/upgrades";
 import type { ResearchDef } from "../content/research";
 import { BALANCE as B } from "../config/balanceConfig";
-import {
-  careerGain,
-  clickPow,
-  devCost,
-  featureCost,
-  refundCost,
-  usersGain,
-} from "./economy";
+import { careerGain, clickPow, devCost, featureCost, usersGain } from "./economy";
 import { resetForPrestige } from "./state";
 
 /** 코드 짜기: LoC 획득 + 약간의 부채. 항상 성공. 획득량 반환. */
@@ -36,13 +29,17 @@ export function shipFeature(s: GameState): { feature: number; users: number } | 
   return { feature: s.features, users: gain };
 }
 
-/** 리팩토링: ₩ 소모 → 부채 전량 청산. 성공 시 청산량, 실패 시 null. */
+/**
+ * 리팩토링: 가진 ₩으로 갚을 수 있는 만큼 부채를 청산(부분 청산 허용).
+ * ₩이 충분하면 전액 청산, 부족하면 일부라도 갚는다 → 수익이 항상 부채를 깎을 수 있다.
+ * 성공 시 청산한 부채량, 실패 시 null.
+ */
 export function refactor(s: GameState): number | null {
-  const cost = refundCost(s);
-  if (s.won < cost || s.debt < 0.1) return null;
-  s.won -= cost;
-  const cleared = s.debt;
-  s.debt = 0;
+  if (s.debt < 0.1 || s.won <= 0) return null;
+  const cleared = Math.min(s.debt, s.won / B.REFUND_MULT);
+  if (cleared <= 0) return null;
+  s.won -= cleared * B.REFUND_MULT;
+  s.debt -= cleared;
   return cleared;
 }
 

@@ -19,7 +19,7 @@ import * as A from "../game/sim/actions";
 import { UPGRADES, getUpgrade, type UpgradeFamily, type Currency } from "../game/content/upgrades";
 import { RESEARCH, getResearch } from "../game/content/research";
 import { ACHIEVEMENTS, getAchievement, newlyUnlocked } from "../game/content/achievements";
-import { EVENTS, type EventDef } from "../game/content/events";
+import { EVENTS, CRISIS_EVENT, type EventDef } from "../game/content/events";
 import {
   clearSave,
   exportSave,
@@ -49,6 +49,9 @@ if (loaded) {
   Object.assign(sim, loaded);
   initialOffline = applyOfflineProgress(sim, (Date.now() - sim.lastSave) / 1000);
 }
+
+// 위기 이벤트 히스테리시스: 한 번 발동하면 부채가 REARM 아래로 내려가야 재무장.
+let crisisArmed = true;
 
 let logSeq = 0;
 export interface LogEntry extends SimEvent {
@@ -104,6 +107,13 @@ export interface Snapshot {
   canShip: boolean;
   refundCost: number;
   canRefactor: boolean;
+  /** 이번 클릭으로 청산될 부채량(₩ 부족 시 부분 청산) */
+  refactorCleared: number;
+  /** 이번 클릭 비용(₩) */
+  refactorCost: number;
+  /** 전액 청산 가능 여부 (false면 부분 청산) */
+  refactorFull: boolean;
+  autoRefactor: boolean;
   debt: number;
   debtRatio: number;
   penaltyPct: number;
@@ -125,6 +135,7 @@ function computeSnapshot(s: GameState): Snapshot {
   const rc = refundCost(s);
   const fc = featureCost(s);
   const cg = careerGain(s);
+  const refactorCleared = Math.min(s.debt, s.won / B.REFUND_MULT);
   return {
     prodMult: pm,
     clickPow: clickPow(s),
@@ -132,7 +143,11 @@ function computeSnapshot(s: GameState): Snapshot {
     usersGain: usersGain(s),
     canShip: s.loc >= fc,
     refundCost: rc,
-    canRefactor: s.won >= rc && s.debt >= 0.1,
+    canRefactor: s.debt >= 0.1 && s.won > 0,
+    refactorCleared,
+    refactorCost: refactorCleared * B.REFUND_MULT,
+    refactorFull: refactorCleared >= s.debt - 1e-6,
+    autoRefactor: s.autoRefactor,
     debt: s.debt,
     debtRatio: Math.min(s.debt / (B.DEBT_SOFTCAP * 2), 1),
     penaltyPct: Math.round((1 - pm) * 100),
@@ -213,8 +228,12 @@ interface Store {
   prestigeNow: () => boolean;
   /** present a random event if none is active (called by the loop on a timer) */
   maybeTriggerEvent: () => void;
+  /** force the debt-crisis event when debt crosses the threshold (loop, each tick) */
+  checkDebtCrisis: () => void;
   /** resolve the active event by choosing option index */
   resolveEvent: (optionIndex: number) => void;
+  /** toggle the auto-refactor preference */
+  toggleAutoRefactor: () => void;
   /** persist now (autosave timer + lifecycle handlers) */
   saveNow: () => void;
   /** dismiss the "while you were away" summary */
@@ -316,6 +335,23 @@ export const useGame = create<Store>((set, get) => ({
     set({ event: def });
   },
 
+  checkDebtCrisis: () => {
+    if (!crisisArmed && sim.debt < B.DEBT_CRISIS_REARM) crisisArmed = true;
+    if (crisisArmed && sim.debt >= B.DEBT_CRISIS && !get().event) {
+      crisisArmed = false;
+      set({ event: CRISIS_EVENT });
+    }
+  },
+
+  toggleAutoRefactor: () => {
+    sim.autoRefactor = !sim.autoRefactor;
+    logLine(get, set, {
+      html: sim.autoRefactor ? "🩹 자동 리팩토링 ON" : "자동 리팩토링 OFF",
+      cls: sim.autoRefactor ? "g" : undefined,
+    });
+    get().refresh();
+  },
+
   resolveEvent: (optionIndex) => {
     const ev = get().event;
     if (!ev) return;
@@ -358,6 +394,7 @@ export const useGame = create<Store>((set, get) => ({
     bug.timer = 0;
     bug.nextAt = 0;
     clearSave();
+    crisisArmed = true;
     set({ offline: null, event: null, log: [entry({ html: "$ rm -rf · 새 출발", cls: "g" })] });
     get().refresh();
   },

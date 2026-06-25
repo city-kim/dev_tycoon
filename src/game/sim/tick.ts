@@ -52,6 +52,16 @@ export function tick(
     s.debt = Math.max(0, s.debt - research.debtDecay * dt);
   }
 
+  // 자동 리팩토링 토글: 수익의 일부를 매 틱 부채 상환에 사용
+  if (s.autoRefactor && s.debt > 0 && s.won > 0) {
+    const budget = wonPerSec(s) * B.AUTO_REFACTOR_FRAC * dt;
+    const spend = Math.min(budget, s.won, s.debt * B.REFUND_MULT);
+    if (spend > 0) {
+      s.won -= spend;
+      s.debt = Math.max(0, s.debt - spend / B.REFUND_MULT);
+    }
+  }
+
   // 부채가 임계치를 넘으면 가끔 버그 이벤트(연출 + 페널티, 연구로 피해 경감)
   if (s.debt > B.DEBT_SOFTCAP) {
     bug.timer += dt;

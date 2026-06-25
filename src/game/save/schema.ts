@@ -2,7 +2,7 @@
 
 export const SAVE_KEY = "dev_tycoon:save";
 export const SAVE_BAK_KEY = "dev_tycoon:save.bak";
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** v1 — first persisted format (no upgrades). */
 export interface SaveV1 {
@@ -31,7 +31,13 @@ export interface SaveV3 extends Omit<SaveV2, "version"> {
   achievements: string[];
 }
 
+/** v4 — adds the auto-refactor toggle. */
+export interface SaveV4 extends Omit<SaveV3, "version"> {
+  version: 4;
+  autoRefactor: boolean;
+}
+
 /** Union of all known save versions (for migration input typing). */
-export type AnySave = SaveV1 | SaveV2 | SaveV3;
+export type AnySave = SaveV1 | SaveV2 | SaveV3 | SaveV4;
 /** The current/latest save shape. */
-export type LatestSave = SaveV3;
+export type LatestSave = SaveV4;

@@ -34,7 +34,7 @@ function useGameLoop() {
     let acc = 0;
     let eventAcc = 0;
     let nextEventAt = EVENT_MIN + Math.random() * EVENT_VAR;
-    const { advance, refresh, maybeTriggerEvent } = useGame.getState();
+    const { advance, refresh, maybeTriggerEvent, checkDebtCrisis } = useGame.getState();
 
     const frame = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.5);
@@ -48,6 +48,8 @@ function useGameLoop() {
         nextEventAt = EVENT_MIN + Math.random() * EVENT_VAR;
         maybeTriggerEvent();
       }
+
+      checkDebtCrisis(); // 부채 임계치 초과 시 강제 위기 이벤트
 
       acc += dt;
       if (acc >= DISPLAY_INTERVAL) {

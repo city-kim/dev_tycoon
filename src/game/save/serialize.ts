@@ -21,6 +21,7 @@ export function serialize(s: GameState): LatestSave {
     upgrades: [...s.upgrades],
     research: [...s.research],
     achievements: [...s.achievements],
+    autoRefactor: s.autoRefactor,
   };
 }
 
@@ -48,6 +49,7 @@ export function deserialize(data: LatestSave): GameState {
     upgrades: strArray(data.upgrades),
     research: strArray(data.research),
     achievements: strArray(data.achievements),
+    autoRefactor: typeof data.autoRefactor === "boolean" ? data.autoRefactor : false,
     lastSave: num(data.lastSave, base.lastSave),
   };
 }

@@ -20,6 +20,10 @@ export function migrate(raw: unknown): LatestSave {
         // v2 → v3: introduce research + achievements.
         data = { ...data, version: 3, research: [], achievements: [] };
         break;
+      case 3:
+        // v3 → v4: introduce the auto-refactor toggle (off by default).
+        data = { ...data, version: 4, autoRefactor: false };
+        break;
       default:
         throw new Error(`save: no migration from v${data.version}`);
     }
